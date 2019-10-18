@@ -8,9 +8,16 @@ import {
 import {warnWhen} from './validation';
 import {PropsV4} from './types-internal';
 
+const pluginProps = {
+  animateFill: false,
+  followCursor: false,
+  inlinePositioning: false,
+  sticky: false,
+  transitionDimensions: false,
+};
+
 export const defaultProps: DefaultProps = {
   allowHTML: true,
-  animateFill: false,
   animation: 'fade',
   appendTo: () => document.body,
   aria: 'describedby',
@@ -23,10 +30,8 @@ export const defaultProps: DefaultProps = {
   flip: true,
   flipBehavior: 'flip',
   flipOnUpdate: false,
-  followCursor: false,
   hideOnClick: true,
   ignoreAttributes: false,
-  inlinePositioning: false,
   inertia: false,
   interactive: false,
   interactiveBorder: 2,
@@ -51,13 +56,13 @@ export const defaultProps: DefaultProps = {
   popperOptions: {},
   role: 'tooltip',
   showOnCreate: false,
-  sticky: false,
   theme: '',
   touch: true,
   trigger: 'mouseenter focus',
   triggerTarget: null,
   updateDuration: 0,
   zIndex: 9999,
+  ...pluginProps,
 };
 
 const defaultKeys = Object.keys(defaultProps);
@@ -95,20 +100,24 @@ export const setDefaultProps: Tippy['setDefaultProps'] = partialProps => {
 /**
  * Returns an extended props object including plugin props
  */
-export function getExtendedProps(
-  props: Props & Record<string, unknown>,
-): Props & Record<string, unknown> {
+export function getExtendedPassedProps(
+  passedProps: Partial<Props> & Record<string, unknown>,
+): Partial<Props> {
+  const plugins = passedProps.plugins || [];
+  const pluginProps = plugins.reduce<Record<string, unknown>>((acc, plugin) => {
+    const {name, defaultValue} = plugin;
+
+    if (name) {
+      acc[name] =
+        passedProps[name] !== undefined ? passedProps[name] : defaultValue;
+    }
+
+    return acc;
+  }, {});
+
   return {
-    ...props,
-    ...props.plugins.reduce<Record<string, unknown>>((acc, plugin) => {
-      const {name, defaultValue} = plugin;
-
-      if (name) {
-        acc[name] = props[name] !== undefined ? props[name] : defaultValue;
-      }
-
-      return acc;
-    }, {}),
+    ...passedProps,
+    ...pluginProps,
   };
 }
 
@@ -118,9 +127,9 @@ export function getExtendedProps(
 export function getDataAttributeProps(
   reference: ReferenceElement,
   plugins: Plugin[],
-): Partial<Props> & Record<string, unknown> {
+): Record<string, unknown> {
   const propKeys = plugins
-    ? Object.keys(getExtendedProps({...defaultProps, plugins}))
+    ? Object.keys(getExtendedPassedProps({...defaultProps, plugins}))
     : defaultKeys;
 
   const props = propKeys.reduce(
@@ -158,7 +167,7 @@ export function getDataAttributeProps(
 export function evaluateProps(
   reference: ReferenceElement,
   props: Props,
-): Props & Record<string, unknown> {
+): Props {
   const out = {
     ...props,
     content: invokeWithArgsOrReturn(props.content, [reference]),
@@ -191,12 +200,8 @@ export function validateProps(
       typeof value === 'object' &&
       hasOwnProperty(value, 'placement');
 
-    const nonPluginProps = removeProperties(defaultProps, [
-      'animateFill',
-      'followCursor',
-      'inlinePositioning',
-      'sticky',
-    ]);
+    const pluginKeys = Object.keys(pluginProps) as Array<keyof DefaultProps>;
+    const nonPluginProps = removeProperties(defaultProps, pluginKeys);
 
     // These props have custom warnings
     const customWarningProps = [

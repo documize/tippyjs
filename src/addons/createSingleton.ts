@@ -82,6 +82,11 @@ const createSingleton: CreateSingleton = (
           const target = event.currentTarget as Element;
           const index = references.indexOf(target);
 
+          // bail-out
+          if (target === currentTarget) {
+            return;
+          }
+
           currentTarget = target;
           currentAria = userAria;
 
